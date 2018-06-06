@@ -1,2 +1,4 @@
 # survival-curve-boxplot
-C++ backend for generating curve boxplots from clinical time-course data
+Generating curve boxplots from clinical time-course data
+
+js frontend; C++ backend
