@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Visualizing disease progression</title>
+  <style>
+    body {
+      background-color: #cefff4;
+      color: #820082;
+      margin: 0;
+      padding: 0;
+      font-family: lato, arial, sans-serif;
+    }
+    h1#title {
+      font-weight: bold;
+      font-size: 50px;
+      text-transform: uppercase;
+      background-color: white;
+      top: 0px;
+      left: 5px;
+      margin: 0;
+      padding: 2px;
+    }
+    div#data_source {
+      font-weight: bold;
+    }
+    span.label{
+      background-color: #820082;
+      color: white;
+      font-weight: bold;
+    }
+    input#data_source {
+      font: inherit;
+      color: #820082;
+      margin: 0;
+      padding: 0;
+      background-color:  yellow;
+      border: none;
+    }
+    button {
+      font: inherit;
+      color: white;
+      background-color: #820082;
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    p#data_source_reporter {
+      margin: 0;
+      padding: 0;
+      background-color: white;
+    }
+    div#viz {
+    }
+    .svg-container {
+      display: inline-block;
+      position: relative;
+      vertical-align: top;
+      overflow: hidden;
+      background-color: white;
+      margin: 2%;
+    }
+    .svg-content-responsive {
+      display: inline-block;
+      position: absolute;
+      top: 10px;
+      left: 0;
+    }
+    .mousedOver.patient_midline{
+      stroke-opacity: 1;
+    }
+    .hidden_event{
+      fill:  #820082;
+    }
+    .axis{
+      font: lato, sans-serif;
+      font-size: 7px;
+    }
+    .axis path{
+      stroke: black;
+      stroke-width: 0.5px;
+      fill: none;
+    }
+  </style>
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="viz.js"></script>
+</head>
+<body>
+<h1 id="title">Disease Progression Demo</h1>
+<div id="data_source">
+  <span class="label">Data source: </span>
+  <input type="text" id="data_source" name="data_source" value="data.tsv">
+  <!-- <button onclick="getData()">Load</button> -->
+  <button onclick="getProcessedData()">Load</button>
+</div>
+<div id="viz"></div>
+</body>
+</html>
