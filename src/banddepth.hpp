@@ -4,13 +4,24 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <random>
 
 using namespace std;
+
+namespace random_helpers {
+  struct random_helper {
+    random_helper();
+    double draw_uniform(double scale) const;
+    double draw_truncated_normal(double upper_limit, double mean, double std_dev) const;
+    double draw_normal(double mean, double std_dev) const;
+  };
+}
 
 namespace banddepth {
 
 static size_t banddepth_K;
-static size_t candidate_replicates;
+static size_t samples;
+static vector<double> envelope_levels;
 
 struct path {
   const vector<double> values;
@@ -71,13 +82,15 @@ path pointwise_max(const vector<pathType>& paths);
 template<class pathType>
 path pointwise_mean(const vector<pathType>& paths);
 
-scored_path& median(const ranked_path_vector& paths);
+scored_path depth_median(const ranked_path_vector& paths);
 
 static double measurement_error = 0;
 static double starttime_error = 0;
 
 template<class pathType>
-vector<const pathType&> subset(const vector<pathType>& paths, size_t exclude);
+vector<const pathType&> random_subsample(const vector<pathType>& paths, size_t exclude);
+
+scored_path generate_sample(const vector<size_t>& times, const vector<double> values);
 
 struct patient {
   string name;
@@ -86,10 +99,14 @@ struct patient {
   vector<scored_path> sampled_paths;
   vector<envelope> envelopes;
   path mean;
-  path median;
+  scored_path median;
   patient(string name, vector<size_t> times, vector<double> values);
   string patient2json() const;
 };
+
+void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values) {
+
+}
 
 template<class pathType>
 size_t max_time(const vector<pathType>& paths) {
@@ -189,8 +206,12 @@ bool envelope::contains(pathType path, double coverage) {
 }
 
 template<class pathType>
-vector<const pathType&> subset(const vector<pathType>& paths, size_t exclude) {
-  
+vector<const pathType&> random_subsample
+
+void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values) {
+
+}(const vector<pathType>& paths, size_t exclude) {
+
 }
 
 } // namespace banddepth
