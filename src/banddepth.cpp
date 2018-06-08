@@ -63,9 +63,10 @@ string path::path2json() const {
   out << "{\n" << R"("values" : )";
   out << "[";
   for(size_t v = 0; v < values.size(); v++) {
-    out << values[v] << ", ";
+    out << values[v];
+    if(v != values.size() - 1) { out << ", "; }
   }
-  out << "\b\b],";
+  out << "],";
   out << "\n" << R"("start_time" : )" << start_time
       << ",\n" << R"("end_time" : )" << end_time
       << "\n}" << flush;
@@ -162,15 +163,15 @@ patient::patient(string name, vector<size_t> times, vector<double> values) : nam
 
 string patient::patient2json() const {
   stringstream out;
-  out << "{\n" << R"("name" : )" << name
+  out << "{\n" << R"("name" : ")" << name << R"(")"
       << ",\n" << R"("median" : )" << median.path2json()
       << ",\n" << R"("mean" : )" << mean.path2json()
       << ",\n" << R"("envelopes" : [)" << flush;
   for(size_t e = 0; e < envelopes.size(); e++) {
     out << envelopes[e].envelope2json();
-    out << "\n,";
+    if(e != envelopes.size() - 1) { out << ","; }
   }
-  out << "\b\n]\n}" << flush;
+  out << "\n]\n}" << flush;
   return out.str();
 }
 
@@ -214,12 +215,13 @@ void generate_statistics(vector<string> names, vector<vector<size_t>> times, vec
 
   out << "{"
       << "\n" << R"("mean" : )" << mean.path2json()
-      << ",\n" << R"("mean" : )" << mean.path2json()
+      << ",\n" << R"("median" : )" << median.path2json()
       << ",\n" << R"("50ile" : )" << p50.envelope2json()
       << ",\n" << R"("95ile" : )" << p95.envelope2json()
       << ",\n" << R"("patients" : [)" << flush;
   for(size_t p = 0; p < patients.size(); p++) {
-    out << patients.at(p).patient2json() << ",\n";
+    out << patients.at(p).patient2json();
+    if(p != patients.size() - 1) { out << ",\n"; }
   }
-  out << "\b\n]\n}" << flush;
+  out << "\n]\n}" << flush;
 }

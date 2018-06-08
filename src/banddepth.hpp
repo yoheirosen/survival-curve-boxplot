@@ -206,12 +206,24 @@ envelope::envelope(const vector<pathType>& paths) : upper(pointwise_max(paths)),
 
 template<class pathType>
 bool envelope::contains(pathType path) {
-  if(path.end_time > upper.end_time || path.start_time < upper.start_time) {
-    throw runtime_error("in call to banddepth::envelope::contains(), path time domain not contained within envelope time domain");
+  {
+    size_t common_start = max(lower.start_time, path.start_time);
+    size_t common_end = min(lower.end_time, path.end_time);
+    
+    for(size_t t = common_start; t <= common_end; t++) {
+      if(path.at(t) < lower.at(t)) {
+        return false;
+      }
+    }
   }
-  for(size_t t = path.start_time; t <= path.end_time; t++) {
-    if(path.at(t) < lower.at(t) || path.at(t) > upper.at(t)) {
-      return false;
+  {
+    size_t common_start = max(upper.start_time, path.start_time);
+    size_t common_end = min(upper.end_time, path.end_time);
+    
+    for(size_t t = common_start; t <= common_end; t++) {
+      if(path.at(t) > upper.at(t)) {
+        return false;
+      }
     }
   }
   return true;
@@ -222,15 +234,28 @@ bool envelope::contains(pathType path, double coverage) {
   if(coverage < 0 || coverage > 1) {
     throw runtime_error("in call to banddepth::envelope::contains(), coverage must be within [0,1]");
   }
-  if(path.end_time > upper.end_time || path.start_time < upper.start_time) {
-    throw runtime_error("in call to banddepth::envelope::contains(), path time domain not contained within envelope time domain");
+  {
+    size_t common_start = max(upper.start_time, path.start_time);
+    size_t common_end = min(upper.end_time, path.end_time);
+    size_t max_mismatches = ((common_end - common_start) * coverage) + 1;
+    size_t mismatches = 0;
+    for(size_t t = common_start; t <= common_end; t++) {
+      if(path.at(t) > upper.at(t)) {
+        mismatches++;
+        if(mismatches > max_mismatches) { return false; }
+      }
+    }
   }
-  size_t max_mismatches = ((path.end_time - path.start_time) * coverage) + 1;
-  size_t mismatches = 0;
-  for(size_t t = path.start_time; t <= path.end_time; t++) {
-    if(path.at(t) < lower.at(t) || path.at(t) > upper.at(t)) {
-      mismatches++;
-      if(mismatches > max_mismatches) { return false; }
+  {
+    size_t common_start = max(lower.start_time, path.start_time);
+    size_t common_end = min(lower.end_time, path.end_time);
+    size_t max_mismatches = ((common_end - common_start) * coverage) + 1;
+    size_t mismatches = 0;
+    for(size_t t = common_start; t <= common_end; t++) {
+      if(path.at(t) < lower.at(t)) {
+        mismatches++;
+        if(mismatches > max_mismatches) { return false; }
+      }
     }
   }
   return true;
