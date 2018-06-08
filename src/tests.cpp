@@ -1,6 +1,6 @@
 #include "banddepth.hpp"
 
-using nameespace std;
+using namespace std;
 
 int main()
 {
@@ -95,6 +95,15 @@ int main()
         scored_path sample = generate_sample(times, values);
         cout << sample.path2json() << endl;
     }
+    
+    cout << "test patient building" << endl; {
+        vector<size_t> times = {0, 5, 8};
+        vector<double> values = {30, 20, 3};
+        patient test_patient("test", times, values);
+        cout << test_patient.patient2json() << endl;
+    }
+    
+    generate_statistics({"001", "002", "003"}, {{0,2,4}, {0,2,4}, {0,2,4}}, {{30,10,3}, {30,22,8}, {30,14,11}}, cout);
     
     return 0;
 }

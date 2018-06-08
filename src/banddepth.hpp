@@ -14,12 +14,11 @@ double draw_truncated_normal(double upper_limit, double lower_limit, double mean
 double draw_normal(double mean, double std_dev);
 size_t random_index(size_t supremum, size_t exclude);
 
-namespace banddepth {
-
 struct path {
   vector<double> values;
   size_t start_time;
   size_t end_time;
+  path() {}
   path(const vector<double>& values);
   path(const vector<double>& values, size_t start_time);
 
@@ -31,6 +30,7 @@ struct path {
 
 struct scored_path : public path {
   size_t depth = -1;
+  scored_path() : path() {}
   scored_path(const vector<double>& values) : path(values) {}
   scored_path(const vector<double>& values, size_t start_time) : path(values, start_time) {}
   bool operator==(const scored_path& other) const { return depth == other.depth; }
@@ -80,11 +80,8 @@ path pointwise_mean(const vector<pathType>& paths);
 
 scored_path depth_median(const ranked_path_vector& paths);
 
-static double measurement_error = 0;
-static double starttime_error = 0;
-
 template<class pathType>
-vector<const pathType&> random_subsample(const vector<pathType>& paths, size_t exclude);
+vector<pathType> random_subsample(const vector<pathType>& paths, size_t exclude);
 
 scored_path generate_sample(const vector<size_t>& times, const vector<double> values);
 
@@ -98,11 +95,15 @@ struct patient {
   scored_path median;
   patient(string name, vector<size_t> times, vector<double> values);
   string patient2json() const;
+  
+  static size_t samples;
+  static double standard_deviation;
+  static vector<double> envelope_levels;
+  static double upper_limit;
+  static size_t banddepth_K;
 };
 
-void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values) {
-
-}
+void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values, ostream& out);
 
 template<class pathType>
 size_t max_end_time(const vector<pathType>& paths) {
@@ -239,7 +240,7 @@ template<class pathType>
 vector<pathType> random_subsample(const vector<pathType>& paths, size_t exclude) {
   size_t sampled = 0;
   vector<size_t> draws;
-  while(sampled < banddepth_K) {
+  while(sampled < patient::banddepth_K) {
     size_t draw = random_index(paths.size() - 1, exclude);
     bool already_drawn = false;
     for(size_t d = 0; d < draws.size(); d++) {
@@ -256,11 +257,5 @@ vector<pathType> random_subsample(const vector<pathType>& paths, size_t exclude)
   }
   return subsample;
 }
-
-void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values) {
-
-}
-
-} // namespace banddepth
 
 #endif
