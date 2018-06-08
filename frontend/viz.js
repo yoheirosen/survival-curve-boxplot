@@ -10,12 +10,24 @@ var selected_ids = [];
 
 d3.select(window).on("load", getProcessedData());
 
-function processData() {
-  child_process.execSync()
-}
+// function getSubset(data) {
+//   d3.request("run_subsetbanddepth.php?id_list=" + data,  function(error, response) {
+//     if(error) return console.warn(error);
+//     console.log(response);
+//   })
+//
+//  d3.json("subsetdata.json", function(data) {
+//
+// })
+// }
 
 function getProcessedData() {
   d3.select(".svg-container").remove();
+
+  // d3.request("run_banddepth.php?tsv=" + data.tsv, function(error, response) {
+  //   if(error) return console.warn(error);
+  //   console.log(response);
+  // })
 
   d3.json("data.json", function(data) {
     var patients = data.patients;
