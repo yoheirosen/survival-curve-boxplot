@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <random>
 
 using namespace std;
@@ -27,7 +28,6 @@ struct path {
   const vector<double> values;
   const size_t start_time;
   const size_t end_time;
-  path();
   path(const vector<double>& values);
   path(const vector<double>& values, size_t start_time);
 
@@ -39,6 +39,8 @@ struct path {
 
 struct scored_path : public path {
   size_t depth = -1;
+  scored_path(const vector<double>& values) : path(values) {}
+  scored_path(const vector<double>& values, size_t start_time) : path(values, start_time) {}
   void get_depth(const vector<path>& paths);
 };
 
@@ -46,9 +48,9 @@ size_t max_time(const vector<size_t>& times);
 size_t min_time(const vector<size_t>& times);
 
 template<class pathType>
-double max_time(const vector<pathType>& paths);
+size_t max_end_time(const vector<pathType>& paths);
 template<class pathType>
-double min_time(const vector<pathType>& paths);
+size_t min_start_time(const vector<pathType>& paths);
 
 template<class pathType>
 double max_value(const vector<pathType>& paths, size_t t);
@@ -109,19 +111,19 @@ void generate_statistics(vector<string> names, vector<vector<size_t>> times, vec
 }
 
 template<class pathType>
-size_t max_time(const vector<pathType>& paths) {
+size_t max_end_time(const vector<pathType>& paths) {
   size_t t_max = 0;
   for(size_t p = 0; p < paths.size(); p++) {
-    if(paths[p].start_time > t_max) { t_min = paths[p].start_time; }
+    if(paths[p].end_time > t_max) { t_max = paths[p].end_time; }
   }
   return t_max;
 }
 
 template<class pathType>
-size_t min_time(const vector<pathType>& paths) {
+size_t min_start_time(const vector<pathType>& paths) {
   size_t t_min = SIZE_MAX;
   for(size_t p = 0; p < paths.size(); p++) {
-    if(paths[p].end_time < t_min) { t_min = paths[p].end_time; }
+    if(paths[p].start_time < t_min) { t_min = paths[p].start_time; }
   }
   return t_min;
 }

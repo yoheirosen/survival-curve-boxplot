@@ -4,7 +4,7 @@
 
 namespace random_helpers {
   random_helper::random_helper() {
-    
+
   }
 
   double random_helper::draw_uniform(double scale) const {
@@ -25,30 +25,33 @@ namespace banddepth {
 banddepth_K = 3;
 samples = 20;
 
-path::path() {}
+path::path(const vector<double>& values) : values(values), start_time(0), end_time(values.size() + start_time) { }
 
-path::path(const vector<double>& values) : values(values), start_time(0), end_time(values.size()) { }
+path::path(const vector<double>& values, size_t start_time) : values(values), start_time(start_time), end_time(values.size() + start_time) { }
 
 double path::operator[] (size_t i) const {
   return values[i];
 }
 
-double at(size_t i) const {
+double path::at(size_t i) const {
   if(i > end_time) { throw runtime_error("in call to banddepth::path::at(), index out of bounds"); }
-  return *(this)[i];
+  return values[i];
 }
 
 
-path::size() const { return values.size(); }
+size_t path::size() const { return values.size(); }
 
 string path::path2json() const {
-  sstream out;
+  stringstream out;
+  out << "{\n" << R"("values" : )";
   out << "[";
-  for(size_t i = 0; i < times.size(); i++) {
-    out << times[i] << ", ";
+  for(size_t v = 0; v < values.size(); v++) {
+    out << values[v] << ", ";
   }
-  if(values.size() != 0) { out << "\b\b"; }
-  out << "]" << flush;
+  out << "\b\b],";
+  out << "\n" << R"("start_time" : )" << start_time
+      << ",\n" << R"("end_time" : )" << end_time
+      << "\n}" << flush;
   return out.str();
 }
 
@@ -63,13 +66,13 @@ size_t max_time(const vector<size_t>& times) {
 size_t min_time(const vector<size_t>& times) {
   size_t t_min = SIZE_MAX;
   for(size_t i = 0; i < times.size(); i++) {
-    if(times[i] > t_min) { t_min = times[i]; }
+    if(times[i] < t_min) { t_min = times[i]; }
   }
   return t_min;
 }
 
 string envelope::envelope2json() const {
-  sstream out;
+  stringstream out;
   out << "{\n" << R"("upper : ")" << upper.path2json()
       << ",\n" << R"("lower : ")" << lower.path2json()
       << "\n}" << flush;
@@ -101,7 +104,19 @@ scored_path& depth_median(const ranked_path_vector& paths) {
 }
 
 scored_path generate_sample(const vector<size_t>& times, const vector<double> values) {
-  //TODO
+  for(size_t i = 0; i < times.size(); i++) {
+    v[times[i]] = draw_truncated_normal(v[times[i - 1]], values[i], std_dev);
+  }
+
+  for(size_t i = 0; i < times.size(); i++) {
+    size_t t_0 = times[i];
+    size_t t_1 = times[i + 1];
+    for(size_t t = t_0 + 1; t < t_1; t++) {
+      v[t] = v[t - 1] + draw_uniform(v[t] - v[t_1]);
+    }
+  }
+
+  return path(v);
 }
 
 patient::patient(string name, vector<size_t> times, vector<double> values) : name(name), times(times), values(values) {
@@ -117,7 +132,7 @@ patient::patient(string name, vector<size_t> times, vector<double> values) : nam
 }
 
 string patient2json() const {
-  sstream out;
+  stringstream out;
   out << "{\n" << R"("name" : )" << name
       << ",\n" << R"("median" : )" << path2json(median)
       << ",\n" << R"("mean" : )" << path2json(mean)
