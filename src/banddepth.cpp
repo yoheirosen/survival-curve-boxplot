@@ -1,33 +1,52 @@
-#include <ctime>
+#include <chrono>
 #include <random>
+#include <algorithm>
 #include "banddepth.hpp"
 
-namespace random_helpers {
-  random_helper::random_helper() {
+double draw_uniform(double scale) {
+  default_random_engine generator;
+  generator.seed(chrono::system_clock::now().time_since_epoch().count());
+  uniform_real_distribution<double> uniform(0.0, 1.0);
+  return uniform(generator) * scale;
+}
 
+double draw_truncated_normal(double upper_limit, double lower_limit, double mean, double std_dev) {
+  default_random_engine generator;
+  generator.seed(chrono::system_clock::now().time_since_epoch().count());
+  normal_distribution<double> normal(mean, std_dev);
+  while(true) {
+    double drawn = normal(generator);
+    if(drawn <= upper_limit && drawn >= lower_limit) { return drawn; }
   }
+}
 
-  double random_helper::draw_uniform(double scale) const {
+double draw_normal(double mean, double std_dev) {
+  default_random_engine generator;
+  generator.seed(chrono::system_clock::now().time_since_epoch().count());
+  normal_distribution<double> normal(mean, std_dev);
+  return normal(generator);
+}
 
-  }
-
-  double random_helper::draw_truncated_normal(double upper_limit, double mean, double std_dev) const {
-
-  }
-
-  double random_helper::draw_normal(double mean, double std_dev) const {
-
-  }
+size_t random_index(size_t supremum, size_t exclude) {
+  default_random_engine generator;
+  generator.seed(chrono::system_clock::now().time_since_epoch().count());
+  uniform_real_distribution<double> unit_uniform(0.0, 1.0);
+  size_t draw = (size_t)(unit_uniform(generator) * supremum);
+  if(draw == supremum) { draw = supremum - 1; }
+  if(draw >= exclude) { draw++; }
+  return draw;
 }
 
 namespace banddepth {
 
-banddepth_K = 3;
-samples = 20;
+static size_t banddepth_K = 3;
+static size_t samples = 20;
+static double standard_deviation = 2;
+static vector<double> envelope_levels = {0.5, 0.75, 0.95};
 
-path::path(const vector<double>& values) : values(values), start_time(0), end_time(values.size() + start_time) { }
+path::path(const vector<double>& values) : values(values), start_time(0), end_time(values.size() - 1 + start_time) { }
 
-path::path(const vector<double>& values, size_t start_time) : values(values), start_time(start_time), end_time(values.size() + start_time) { }
+path::path(const vector<double>& values, size_t start_time) : values(values), start_time(start_time), end_time(values.size() - 1 + start_time) { }
 
 double path::operator[] (size_t i) const {
   return values[i];
@@ -37,7 +56,6 @@ double path::at(size_t i) const {
   if(i > end_time) { throw runtime_error("in call to banddepth::path::at(), index out of bounds"); }
   return values[i];
 }
-
 
 size_t path::size() const { return values.size(); }
 
@@ -73,20 +91,21 @@ size_t min_time(const vector<size_t>& times) {
 
 string envelope::envelope2json() const {
   stringstream out;
-  out << "{\n" << R"("upper : ")" << upper.path2json()
-      << ",\n" << R"("lower : ")" << lower.path2json()
+  out << "{\n" << R"("upper" : )" << upper.path2json()
+      << ",\n" << R"("lower" : )" << lower.path2json()
       << "\n}" << flush;
   return out.str();
 }
 
-ranked_path_vector rank(const vector<scored_path>& paths) {
-  ranked_path_vector ranked;
+ranked_path_vector& rank_paths(vector<scored_path>& paths) {
+  sort(paths.begin(), paths.end());
+  return paths;
 }
 
 ranked_path_vector subset(ranked_path_vector& paths, size_t max_idx) {
   if(fraction < 0 || fraction > 1) { throw runtime_error("in call to banddepth::subset, subset max_idx must be within path indices"); }
   ranked_path_vector ranked;
-  for(size_t p = 0; p < paths.size(); p++) {
+  for(size_t p = 0; p <= max_idx; p++) {
     ranked.push_back(paths[p]);
   }
   return ranked;
@@ -98,32 +117,38 @@ ranked_path_vector subset(ranked_path_vector& paths, double fraction) {
   return subset(paths, max_idx);
 }
 
-scored_path& depth_median(const ranked_path_vector& paths) {
+scored_path depth_median(const ranked_path_vector& paths) {
   if(paths.size() == 0) { throw runtime_error("in call to banddepth::median(), paths vector is empty"); }
   return paths[0];
 }
 
+static double upper_limit = 30;
+
 scored_path generate_sample(const vector<size_t>& times, const vector<double> values) {
-  for(size_t i = 0; i < times.size(); i++) {
-    v[times[i]] = draw_truncated_normal(v[times[i - 1]], values[i], std_dev);
+  vector<double> v(times.back() + 1);
+  v[times[0]] = draw_truncated_normal(upper_limit, 0, values[0], standard_deviation);
+  for(size_t i = 1; i < times.size(); i++) {
+    v[times[i]] = draw_truncated_normal(v[times[i - 1]], 0, values[i], standard_deviation);
   }
 
-  for(size_t i = 0; i < times.size(); i++) {
+  for(size_t i = 0; i < times.size() - 1; i++) {
     size_t t_0 = times[i];
     size_t t_1 = times[i + 1];
     for(size_t t = t_0 + 1; t < t_1; t++) {
-      v[t] = v[t - 1] + draw_uniform(v[t] - v[t_1]);
+      v[t] = v[t - 1] - draw_uniform(v[t - 1] - v[t_1]);
     }
   }
 
-  return path(v);
+  return scored_path(v);
 }
 
 patient::patient(string name, vector<size_t> times, vector<double> values) : name(name), times(times), values(values) {
   for(size_t p = 0; p < samples; p++) {
     sampled_paths.push_back(generate_sample(times, values));
   }
-  ranked_path_vector ranked_sampled_paths = rank(sampled_paths);
+  
+  
+  ranked_path_vector ranked_sampled_paths = rank_paths(sampled_paths);
   mean = pointwise_mean(sample_paths);
   median = depth_median(sample_paths);
   for(size_t e = 0; e < envelope_levels.size(); e++) {
@@ -175,7 +200,7 @@ void generate_statistics(vector<string> names, vector<vector<size_t>> times, vec
       aggregate_paths.push_back(patient.sample_paths[p][s]);
     }
   }
-  ranked_path_vector ranked_paths = rank(aggregate_paths);
+  ranked_path_vector ranked_paths = rank_paths(aggregate_paths);
   path median = depth_median(ranked_paths);
   path mean = pointwise_mean(ranked_paths);
   envelope 50_percentile = envelope(subset(sample_paths, 0.5));

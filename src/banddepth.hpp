@@ -9,25 +9,17 @@
 
 using namespace std;
 
-namespace random_helpers {
-  struct random_helper {
-    random_helper();
-    double draw_uniform(double scale) const;
-    double draw_truncated_normal(double upper_limit, double mean, double std_dev) const;
-    double draw_normal(double mean, double std_dev) const;
-  };
-}
+double draw_uniform(double scale);
+double draw_truncated_normal(double upper_limit, double lower_limit, double mean, double std_dev);
+double draw_normal(double mean, double std_dev);
+size_t random_index(size_t supremum, size_t exclude);
 
 namespace banddepth {
 
-static size_t banddepth_K;
-static size_t samples;
-static vector<double> envelope_levels;
-
 struct path {
-  const vector<double> values;
-  const size_t start_time;
-  const size_t end_time;
+  vector<double> values;
+  size_t start_time;
+  size_t end_time;
   path(const vector<double>& values);
   path(const vector<double>& values, size_t start_time);
 
@@ -41,6 +33,8 @@ struct scored_path : public path {
   size_t depth = -1;
   scored_path(const vector<double>& values) : path(values) {}
   scored_path(const vector<double>& values, size_t start_time) : path(values, start_time) {}
+  bool operator==(const scored_path& other) const { return depth == other.depth; }
+  bool operator<(const scored_path& other) const { return depth < other.depth; }
   void get_depth(const vector<path>& paths);
 };
 
@@ -71,9 +65,9 @@ struct envelope {
   string envelope2json() const;
 };
 
-typedef vector<scored_path&> ranked_path_vector;
+typedef vector<scored_path> ranked_path_vector;
 
-ranked_path_vector rank(const vector<scored_path>& paths);
+ranked_path_vector& rank_paths(vector<scored_path>& paths);
 ranked_path_vector subset(ranked_path_vector& paths, size_t max_idx);
 ranked_path_vector subset(ranked_path_vector& paths, double fraction);
 
@@ -157,23 +151,57 @@ double mean_value(const vector<pathType>& paths, size_t t) {
 
 template<class pathType>
 path pointwise_min(const vector<pathType>& paths) {
-
+  size_t t_0 = min_start_time(paths);
+  size_t t_1 = max_end_time(paths);
+  vector<double> points(t_1 - t_0 + 1, 0);
+  double v_max = max_value(paths, 0);
+  for(size_t t = t_0; t <= t_1; t++) {
+    points[t] = v_max;
+    for(size_t p = 0; p < paths.size(); p++) {
+      if(t >= paths[p].start_time && t <= paths[p].end_time) {
+        if(paths[p][t] < points[t]) { points[t] = paths[p][t]; }
+      }
+    }
+  }
+  return path(points, t_0);
 }
 
 template<class pathType>
 path pointwise_max(const vector<pathType>& paths) {
-
+  size_t t_0 = min_start_time(paths);
+  size_t t_1 = max_end_time(paths);
+  vector<double> points(t_1 - t_0 + 1, 0);
+  for(size_t t = t_0; t <= t_1; t++) {
+    points[t] = 0;
+    for(size_t p = 0; p < paths.size(); p++) {
+      if(t >= paths[p].start_time && t <= paths[p].end_time) {
+        if(paths[p][t] > points[t]) { points[t] = paths[p][t]; }
+      }
+    }
+  }
+  return path(points, t_0);
 }
 
 template<class pathType>
 path pointwise_mean(const vector<pathType>& paths) {
-
+  size_t t_0 = min_start_time(paths);
+  size_t t_1 = max_end_time(paths);
+  vector<double> points(t_1 - t_0 + 1, 0);
+  for(size_t t = t_0; t <= t_1; t++) {
+    size_t n = 0;
+    for(size_t p = 0; p < paths.size(); p++) {
+      if(t >= paths[p].start_time && t <= paths[p].end_time) {
+        n++;
+        points[t] += paths[p].at(t);
+      }
+    }
+    points[t] = points[t] / n;
+  }
+  return path(points, t_0);
 }
 
 template<class pathType>
-envelope::envelope(const vector<pathType>& paths) {
-  //TODO
-}
+envelope::envelope(const vector<pathType>& paths) : upper(pointwise_max(paths)), lower(pointwise_min(paths)) {}
 
 template<class pathType>
 bool envelope::contains(pathType path) {
@@ -196,7 +224,7 @@ bool envelope::contains(pathType path, double coverage) {
   if(path.end_time > upper.end_time || path.start_time < upper.start_time) {
     throw runtime_error("in call to banddepth::envelope::contains(), path time domain not contained within envelope time domain");
   }
-  size_t max_mismatches = (path.end_time - path.start_time) * coverage;
+  size_t max_mismatches = ((path.end_time - path.start_time) * coverage) + 1;
   size_t mismatches = 0;
   for(size_t t = path.start_time; t <= path.end_time; t++) {
     if(path.at(t) < lower.at(t) || path.at(t) > upper.at(t)) {
@@ -208,11 +236,28 @@ bool envelope::contains(pathType path, double coverage) {
 }
 
 template<class pathType>
-vector<const pathType&> random_subsample
+vector<pathType> random_subsample(const vector<pathType>& paths, size_t exclude) {
+  size_t sampled = 0;
+  vector<size_t> draws;
+  while(sampled < banddepth_K) {
+    size_t draw = random_index(paths.size() - 1, exclude);
+    bool already_drawn = false;
+    for(size_t d = 0; d < draws.size(); d++) {
+      if(draw == draws[d]) { already_drawn = true; }
+    }
+    if(already_drawn == false) {
+      draws.push_back(draw);
+      ++sampled;
+    }
+  }
+  vector<pathType> subsample;
+  for(size_t p = 0; p < draws.size(); p++) {
+    subsample.push_back(paths[draws[p]]);
+  }
+  return subsample;
+}
 
 void generate_statistics(vector<string> names, vector<vector<size_t>> times, vector<vector<double>> values) {
-
-}(const vector<pathType>& paths, size_t exclude) {
 
 }
 
